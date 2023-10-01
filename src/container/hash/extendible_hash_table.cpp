@@ -17,7 +17,6 @@
 #include <utility>
 
 #include "container/hash/extendible_hash_table.h"
-#include "iostream"
 #include "storage/page/page.h"
 
 namespace bustub {
@@ -25,8 +24,7 @@ namespace bustub {
 template <typename K, typename V>
 ExtendibleHashTable<K, V>::ExtendibleHashTable(size_t bucket_size)
     : global_depth_(0), bucket_size_(bucket_size), num_buckets_(1) {
-  auto bucket = std::make_shared<Bucket>(bucket_size);
-  dir_.emplace_back(bucket);
+  dir_.emplace_back(std::make_shared<Bucket>(bucket_size));
 }
 
 template <typename K, typename V>
@@ -70,72 +68,66 @@ auto ExtendibleHashTable<K, V>::GetNumBucketsInternal() const -> int {
 
 template <typename K, typename V>
 auto ExtendibleHashTable<K, V>::Find(const K &key, V &value) -> bool {
+  // UNREACHABLE("not implemented");
   std::scoped_lock<std::mutex> lock(latch_);
-  size_t index = IndexOf(key);
-  return dir_[index]->Find(key, value);
+  size_t index = this->IndexOf(key);
+  auto ans = dir_[index]->Find(key, value);
+  return ans;
 }
 
 template <typename K, typename V>
 auto ExtendibleHashTable<K, V>::Remove(const K &key) -> bool {
+  // UNREACHABLE("not implemented");
   std::scoped_lock<std::mutex> lock(latch_);
-  size_t index = IndexOf(key);
-  return dir_[index]->Remove(key);
+  size_t index = this->IndexOf(key);
+  auto ans = dir_[index]->Remove(key);
+  return ans;
 }
 
 template <typename K, typename V>
-auto ExtendibleHashTable<K, V>::RedistributeBucket(std::shared_ptr<Bucket> bucket) -> void {}
-
-template <typename K, typename V>
-void ExtendibleHashTable<K, V>::InsertInternal(const K &key, const V &value) {
-  size_t index = IndexOf(key);
-  std::shared_ptr<Bucket> bucket = dir_[index];
-  bool res = bucket->Insert(key, value);
-  if (res) {
-    return;
-  }
-
-  // Bucket is full, depth of bucket equals global depth, extend the dir and split the bucket.
-  if (GetGlobalDepthInternal() == bucket->GetDepth()) {
-    global_depth_++;
-    size_t capacity = dir_.size();
-    dir_.resize(capacity << 1);
-    for (size_t i = 0; i < capacity; i++) {
-      dir_[i + capacity] = dir_[i];
+auto ExtendibleHashTable<K, V>::RedistributeBucket(std::shared_ptr<Bucket> bucket) -> void {
+  bucket->IncrementDepth();
+  int depth = bucket->GetDepth();
+  num_buckets_++;
+  std::shared_ptr<Bucket> p(new Bucket(bucket_size_, depth));
+  size_t preidx = std::hash<K>()((*(bucket->GetItems().begin())).first) & ((1 << (depth - 1)) - 1);
+  for (auto it = bucket->GetItems().begin(); it != bucket->GetItems().end();) {
+    size_t idx = std::hash<K>()((*it).first) & ((1 << depth) - 1);
+    if (idx != preidx) {
+      p->Insert((*it).first, (*it).second);  // 1xxx
+      bucket->GetItems().erase(it++);
+    } else {
+      it++;
     }
-  }
-
-  // Bucket is full ,but the depth of bucket less than local depth, split the bucket.
-  int new_depth = bucket->GetDepth() + 1;
-  size_t base_mask = (1 << bucket->GetDepth()) - 1;
-  size_t split_mask = (1 << new_depth) - 1;
-  auto first_bucket = std::make_shared<Bucket>(bucket_size_, new_depth);
-  auto second_bucket = std::make_shared<Bucket>(bucket_size_, new_depth);
-  size_t low_index = index & base_mask;
-  for (const auto &ele : bucket->GetItems()) {
-    size_t split_index = IndexOf(ele.first);
-    if ((split_index & split_mask) == low_index) {
-      first_bucket->GetItems().emplace_back(ele);
-      continue;
-    }
-    second_bucket->GetItems().emplace_back(ele);
   }
   for (size_t i = 0; i < dir_.size(); i++) {
-    if ((i & base_mask) == low_index) {
-      if ((i & split_mask) == low_index) {
-        dir_[i] = first_bucket;
-        continue;
-      }
-      dir_[i] = second_bucket;
+    // 1xxx
+    if ((i & ((1 << (depth - 1)) - 1)) == preidx && (i & ((1 << depth) - 1)) != preidx) {
+      dir_[i] = p;
     }
   }
-  num_buckets_++;
-  return InsertInternal(key, value);
 }
 
 template <typename K, typename V>
 void ExtendibleHashTable<K, V>::Insert(const K &key, const V &value) {
+  // UNREACHABLE("not implemented");
   std::scoped_lock<std::mutex> lock(latch_);
-  return InsertInternal(key, value);
+  while (true) {
+    size_t index = this->IndexOf(key);
+    bool flag = dir_[index]->Insert(key, value);
+    if (flag) {
+      break;
+    }
+    if (GetLocalDepthInternal(index) != GetGlobalDepthInternal()) {
+      RedistributeBucket(dir_[index]);
+    } else {
+      global_depth_++;
+      size_t dir_size = dir_.size();
+      for (size_t i = 0; i < dir_size; i++) {
+        dir_.emplace_back(dir_[i]);
+      }
+    }
+  }
 }
 
 //===--------------------------------------------------------------------===//
@@ -146,9 +138,10 @@ ExtendibleHashTable<K, V>::Bucket::Bucket(size_t array_size, int depth) : size_(
 
 template <typename K, typename V>
 auto ExtendibleHashTable<K, V>::Bucket::Find(const K &key, V &value) -> bool {
-  for (auto &[k, v] : list_) {
-    if (k == key) {
-      value = v;
+  // UNREACHABLE("not implemented");
+  for (auto it = list_.begin(); it != list_.end(); ++it) {
+    if ((*it).first == key) {
+      value = (*it).second;
       return true;
     }
   }
@@ -157,32 +150,30 @@ auto ExtendibleHashTable<K, V>::Bucket::Find(const K &key, V &value) -> bool {
 
 template <typename K, typename V>
 auto ExtendibleHashTable<K, V>::Bucket::Remove(const K &key) -> bool {
-  for (auto ele = list_.begin(); ele != list_.end();) {
-    if (ele->first == key) {
-      list_.erase(ele);
+  // UNREACHABLE("not implemented");
+  for (auto it = list_.begin(); it != list_.end();) {
+    if ((*it).first == key) {
+      list_.erase(it++);
       return true;
     }
-    ele++;
+    it++;
   }
   return false;
 }
 
 template <typename K, typename V>
 auto ExtendibleHashTable<K, V>::Bucket::Insert(const K &key, const V &value) -> bool {
-  // if the key already exists, overwrite its value with new value
-  for (auto &[k, v] : list_) {
-    if (k == key) {
-      v = value;
+  // UNREACHABLE("not implemented");
+  for (auto it = list_.begin(); it != list_.end(); it++) {
+    if ((*it).first == key) {
+      (*it).second = value;
       return true;
     }
   }
-
-  if (IsFull()) {
+  if (this->IsFull()) {
     return false;
   }
-
-  // Here the local depth of the bucket is less than global depth.
-  list_.emplace_back(key, value);
+  list_.emplace_back(std::make_pair(key, value));
   return true;
 }
 

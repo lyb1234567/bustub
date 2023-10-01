@@ -196,7 +196,6 @@ class ExtendibleHashTable : public HashTable<K, V> {
   auto GetGlobalDepthInternal() const -> int;
   auto GetLocalDepthInternal(int dir_index) const -> int;
   auto GetNumBucketsInternal() const -> int;
-  auto InsertInternal(const K &key, const V &value) -> void;
 };
 
 }  // namespace bustub

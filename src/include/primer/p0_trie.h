@@ -37,7 +37,10 @@ class TrieNode {
    *
    * @param key_char Key character of this trie node
    */
-  explicit TrieNode(char key_char) : key_char_(key_char) {}
+  explicit TrieNode(char key_char)  
+  {
+      this->key_char_=key_char;
+  }
 
   /**
    * TODO(P0): Add implementation
@@ -48,9 +51,9 @@ class TrieNode {
    * @param other_trie_node Old trie node.
    */
   TrieNode(TrieNode &&other_trie_node) noexcept {
-    this->key_char_ = other_trie_node.key_char_;
-    this->is_end_ = other_trie_node.is_end_;
-    this->children_ = std::move(other_trie_node.children_);
+    this->key_char_=other_trie_node.key_char_;
+    this->is_end_=other_trie_node.is_end_;
+    this->children_=std::move(other_trie_node.children_);
   }
 
   /**
@@ -66,7 +69,10 @@ class TrieNode {
    * @param key_char Key char of child node.
    * @return True if this trie node has a child with given key, false otherwise.
    */
-  auto HasChild(char key_char) const -> bool { return children_.count(key_char) > 0; }
+  auto HasChild(char key_char) const -> bool 
+  {
+     return this->children_.count(key_char)>0;
+   }
 
   /**
    * TODO(P0): Add implementation
@@ -115,11 +121,12 @@ class TrieNode {
    * @param child Unique pointer created for the child node. This should be added to children_ map.
    * @return Pointer to unique_ptr of the inserted child node. If insertion fails, return nullptr.
    */
-  auto InsertChildNode(char key_char, std::unique_ptr<TrieNode> &&child) -> std::unique_ptr<TrieNode> * {
-    if (children_.count(key_char) > 0 || child->GetKeyChar() != key_char) {
-      return nullptr;
+  auto   InsertChildNode(char key_char, std::unique_ptr<TrieNode> &&child) -> std::unique_ptr<TrieNode> * {
+    if (children_.count(key_char)>0|| (child->GetKeyChar()!=key_char))
+    {
+        return nullptr;
     }
-    children_[key_char] = std::move(child);
+    children_[key_char]=std::move(child);
     return &children_[key_char];
   }
 
@@ -149,8 +156,9 @@ class TrieNode {
    * @param key_char Key char of child node to be removed
    */
   void RemoveChildNode(char key_char) {
-    if (children_.count(key_char) == 0) {
-      return;
+    if(children_.count(key_char)==0)
+    {
+      return ;
     }
     children_.erase(key_char);
   }
@@ -203,7 +211,7 @@ class TrieNodeWithValue : public TrieNode {
    * @param trieNode TrieNode whose data is to be moved to TrieNodeWithValue
    * @param value
    */
-  TrieNodeWithValue(TrieNode &&trieNode, T value) : TrieNode(std::forward<TrieNode>(trieNode)) {
+  TrieNodeWithValue(TrieNode &&trieNode, T value) : TrieNode(std::move(trieNode)) {
     this->value_ = value;
     this->is_end_ = true;
   }
@@ -258,7 +266,7 @@ class Trie {
    * character.
    */
   // Trie() = default;
-  Trie() { root_ = std::make_unique<TrieNode>('\0'); }
+  Trie() { root_=std::make_unique<TrieNode>('\0'); }
 
   /**
    * TODO(P0): Add implementation
@@ -293,7 +301,7 @@ class Trie {
       return false;
     }
     latch_.WLock();
-    auto curr = &root_;
+    auto curr = & root_;
     std::unique_ptr<TrieNode> *parent;
     for (size_t i = 0; i < key_size; i++) {
       if (curr->get()->GetChildNode(key[i]) == nullptr) {
@@ -302,11 +310,15 @@ class Trie {
       parent = curr;
       curr = curr->get()->GetChildNode(key[i]);
     }
+   //if it is already a TrieNodeWithValue,
+   //then insertion fails and return false. Do not overwrite existing data with new data.
     if (curr->get()->IsEndNode()) {
       latch_.WUnlock();
       return false;
     }
+    // 新建一个Ending TrieNode
     auto new_node = std::make_unique<TrieNodeWithValue<T>>(std::move(**curr), value);
+    std::cout<<"("<<new_node.get()->GetValue()<<","<<&parent<<")"<<std::endl;
     (*parent)->RemoveChildNode(key[key_size - 1]);
     (*parent)->InsertChildNode(key[key_size - 1], std::move(new_node));
     latch_.WUnlock();
@@ -385,14 +397,23 @@ class Trie {
     auto curr = &root_;
     latch_.RLock();
     size_t key_size = key.size();
+    if (key_size==0)
+    {
+      *success=false;
+      return T();
+    }
     for (size_t i = 0; i < key_size; i++) {
-      if ((*curr)->GetChildNode(key[i]) == nullptr) {
-        *success = false;
+      // 如果当前key为空，那么就设置为false.
+      if((*curr)-> GetChildNode(key[i])==nullptr)
+      {
+        *success=false;
         latch_.RUnlock();
         return T();
       }
-      curr = (*curr)->GetChildNode(key[i]);
+      // 遍历下一个节点
+      curr=(*curr)->GetChildNode(key[i]);
     }
+    // 遍历完了之后，如果末尾节点没有设置为IsEnd的话，设置为false，
     if (!(*curr)->IsEndNode()) {
       *success = false;
       latch_.RUnlock();
