@@ -310,7 +310,6 @@ class Trie {
     }
     // 新建一个Ending TrieNode
     auto new_node = std::make_unique<TrieNodeWithValue<T>>(std::move(**curr), value);
-    std::cout << "(" << new_node.get()->GetValue() << "," << &parent << ")" << std::endl;
     (*parent)->RemoveChildNode(key[key_size - 1]);
     (*parent)->InsertChildNode(key[key_size - 1], std::move(new_node));
     latch_.WUnlock();
