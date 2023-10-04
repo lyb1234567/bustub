@@ -14,8 +14,8 @@
 
 #include <limits>
 #include <list>
-#include <memory>
 #include <mutex>  // NOLINT
+#include <queue>
 #include <unordered_map>
 #include <vector>
 
@@ -71,6 +71,7 @@ class LRUKReplacer {
    * @param[out] frame_id id of frame that is evicted.
    * @return true if a frame is evicted successfully, false if no frames can be evicted.
    */
+  auto Judge(frame_id_t s, frame_id_t t) -> bool;
   auto Evict(frame_id_t *frame_id) -> bool;
 
   /**
@@ -124,46 +125,21 @@ class LRUKReplacer {
    */
   void Remove(frame_id_t frame_id);
 
-  /**
-   * TODO(P1): Add implementation
-   *
-   * @brief Return replacer's size, which tracks the number of evictable frames.
-   *
-   * @return size_t
-   */
+ 
   auto Size() -> size_t;
-
-  class FrameInfo {
-   public:
-    explicit FrameInfo(frame_id_t frame_id);
-
-    inline auto IsEvictable() -> bool { return evictable_; };
-
-    inline auto SetEvictable(const bool is_evictable) -> void { evictable_ = is_evictable; };
-
-    inline auto IncreaseTimes() -> void { times_ += 1; };
-
-    inline auto GetId() const -> frame_id_t { return frame_id_; };
-
-    inline auto GetTimes() const -> size_t { return times_; };
-
-   private:
-    frame_id_t frame_id_;
-    size_t times_;
-    bool evictable_;
-  };
 
  private:
   // TODO(student): implement me! You can replace these member variables as you like.
   // Remove maybe_unused if you start using them.
-  [[maybe_unused]] size_t current_timestamp_{0};
-  [[maybe_unused]] size_t curr_size_{0};
-  [[maybe_unused]] size_t replacer_size_;
-  [[maybe_unused]] size_t k_;
-  std::list<std::unique_ptr<FrameInfo>> cache_pool_;
-  std::unordered_map<frame_id_t, std::list<std::unique_ptr<FrameInfo>>::iterator> cache_map_;
-  std::list<std::unique_ptr<FrameInfo>> temp_pool_;
-  std::unordered_map<frame_id_t, std::list<std::unique_ptr<FrameInfo>>::iterator> temp_map_;
+  size_t current_timestamp_{0};
+  size_t curr_size_{0};
+  size_t replacer_size_;
+  size_t k_;
+  struct Frameinfo {
+    bool evictable_{false};
+    std::queue<size_t> time_;
+  };
+  std::unordered_map<frame_id_t, struct Frameinfo> hash_;
   std::mutex latch_;
 };
 
