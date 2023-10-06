@@ -20,6 +20,7 @@
 #include <list>
 #include <memory>
 #include <mutex>  // NOLINT
+#include <ostream>
 #include <utility>
 #include <vector>
 

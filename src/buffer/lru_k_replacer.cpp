@@ -16,6 +16,8 @@
 
 namespace bustub {
 
+// 哈希表记录每个frame的frame information
+// 然后每个frame information 都储存了时间截。
 LRUKReplacer::LRUKReplacer(size_t num_frames, size_t k) : replacer_size_(num_frames), k_(k) {}
 
 /**

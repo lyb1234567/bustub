@@ -26,18 +26,15 @@ namespace bustub {
 
 template <typename K, typename V>
 ExtendibleHashTable<K, V>::ExtendibleHashTable(size_t bucket_size)
-: global_depth_(0), bucket_size_(bucket_size), num_buckets_(1) 
-    {
-      dir_.emplace_back(std::make_shared<Bucket>(bucket_size));
-
-    }
+    : global_depth_(0), bucket_size_(bucket_size), num_buckets_(1) {
+  dir_.emplace_back(std::make_shared<Bucket>(bucket_size));
+}
 
 template <typename K, typename V>
 auto ExtendibleHashTable<K, V>::IndexOf(const K &key) -> size_t {
   int mask = (1 << global_depth_) - 1;
   return std::hash<K>()(key) & mask;
 }
-
 template <typename K, typename V>
 auto ExtendibleHashTable<K, V>::GetGlobalDepth() const -> int {
   std::scoped_lock<std::mutex> lock(latch_);
@@ -71,19 +68,22 @@ auto ExtendibleHashTable<K, V>::GetNumBucketsInternal() const -> int {
   return num_buckets_;
 }
 
+
 template <typename K, typename V>
 auto ExtendibleHashTable<K, V>::Find(const K &key, V &value) -> bool {
+  // UNREACHABLE("not implemented");
   std::scoped_lock<std::mutex> lock(latch_);
-  size_t index=this->IndexOf(key);
+  size_t index = this->IndexOf(key);
   auto ans = dir_[index]->Find(key, value);
   return ans;
 }
 
 template <typename K, typename V>
 auto ExtendibleHashTable<K, V>::Remove(const K &key) -> bool {
+  // UNREACHABLE("not implemented");
   std::scoped_lock<std::mutex> lock(latch_);
-  size_t index=this->IndexOf(key);
-  auto ans=dir_[index]->Remove(key);
+  size_t index = this->IndexOf(key);
+  auto ans = dir_[index]->Remove(key);
   return ans;
 }
 
@@ -102,18 +102,17 @@ auto ExtendibleHashTable<K, V>::Remove(const K &key) -> bool {
 template <typename K, typename V>
 auto ExtendibleHashTable<K, V>::RedistributeBucket(std::shared_ptr<Bucket> bucket) -> void
 {
-  bucket->IncrementDepth();
-  int depth=bucket->GetDepth();
+ bucket->IncrementDepth();
+  int depth = bucket->GetDepth();
   num_buckets_++;
-  // 建一个新桶子
   std::shared_ptr<Bucket> p(new Bucket(bucket_size_, depth));
   // 分裂前原始的桶子中元素对应的index，比如说，在桶子装满前，原始的桶子中有三个元素，21 25 29，他们对应的index都是一个
   // 分裂之后，local depth需要加一，这样我们重新计算每一个桶子里的元素，保持一致的就留着，不一样的，就放到分裂的新桶里。
    size_t preidx = std::hash<K>()((*(bucket->GetItems().begin())).first) & ((1 << (depth - 1)) - 1);
-   for(auto it=bucket->GetItems().begin();it!=bucket->GetItems().end();it++ )
+   for(auto it=bucket->GetItems().begin();it!=bucket->GetItems().end();)
    {
     //  新的index
-     size_t idx=std::hash<K>()((*it).first)& ((1 << (depth - 1)) - 1);
+     size_t idx = std::hash<K>()((*it).first) & ((1 << depth) - 1);
      if (idx!=preidx)
      {
       // 如果是新的元素，那么就插入新的桶子里
@@ -125,19 +124,17 @@ auto ExtendibleHashTable<K, V>::RedistributeBucket(std::shared_ptr<Bucket> bucke
      {
       it++;
      }
+   }
     //  新桶分裂新建完毕之后，我们就需要考虑，dir中哪些条目的指针是指向新桶子，哪些还是保留原来的位置
     // 需要满足两个条件：1.低 depth-1位和predix想匹配 2.低depth位和predix不匹配
     // 因为当一个桶子满了之后，分裂之后，我们需要会增加局部深度，比如原来是2，现在会变成3，那么新的原本最后2位其实依旧一致，但是第三位会不一样
     // 比如 当局部深度为2时：101 001都是一样的， 但是局部深度为3时： 101 001是不一样的
-     for(size_t i=0;i<dir_.size();i++)
-     {
-      if((i & ((1 << (depth - 1)) - 1)) == preidx && (i & ((1 << depth) - 1)) != preidx)
-      {
-        dir_[i]=p;
-      }
-     }
-
-   }
+      for (size_t i = 0; i < dir_.size(); i++) {
+    // 1xxx
+    if ((i & ((1 << (depth - 1)) - 1)) == preidx && (i & ((1 << depth) - 1)) != preidx) {
+      dir_[i] = p;
+    }
+  }
    
 }
 
@@ -199,11 +196,11 @@ ExtendibleHashTable<K, V>::Bucket::Bucket(size_t array_size, int depth) : size_(
 
 template <typename K, typename V>
 auto ExtendibleHashTable<K, V>::Bucket::Find(const K &key, V &value) -> bool {
-  for(auto it=list_.begin();it!=list_.end();it++)
+  for(auto it=list_.begin();it!=list_.end();++it)
   {
     if((*it).first==key)
     {
-      (*it).second=value;
+      value = (*it).second;
       return true;
     }
   }
@@ -224,10 +221,9 @@ auto ExtendibleHashTable<K, V>::Bucket::Find(const K &key, V &value) -> bool {
  */
 template <typename K, typename V>
 auto ExtendibleHashTable<K, V>::Bucket::Remove(const K &key) -> bool {
-  for(auto it=list_.begin();it!=list_.end();)
-  {
-    if((*it).first==key)
-    {
+  // UNREACHABLE("not implemented");
+  for (auto it = list_.begin(); it != list_.end();) {
+    if ((*it).first == key) {
       list_.erase(it++);
       return true;
     }
@@ -251,16 +247,14 @@ auto ExtendibleHashTable<K, V>::Bucket::Remove(const K &key) -> bool {
  */
 template <typename K, typename V>
 auto ExtendibleHashTable<K, V>::Bucket::Insert(const K &key, const V &value) -> bool {
-  for(auto it=list_.begin();it!=list_.end();it++)
-  {
-    if ((*it).first==key)
-    {
-      (*it).second=value;
+  // UNREACHABLE("not implemented");
+  for (auto it = list_.begin(); it != list_.end(); it++) {
+    if ((*it).first == key) {
+      (*it).second = value;
       return true;
     }
   }
-  if(this->IsFull())
-  {
+  if (this->IsFull()) {
     return false;
   }
   list_.emplace_back(std::make_pair(key, value));
