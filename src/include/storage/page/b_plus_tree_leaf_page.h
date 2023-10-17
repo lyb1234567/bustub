@@ -49,15 +49,17 @@ class BPlusTreeLeafPage : public BPlusTreePage {
   auto GetNextPageId() const -> page_id_t;
   void SetNextPageId(page_id_t next_page_id);
   auto KeyAt(int index) const -> KeyType;
+
+  auto Remove(const KeyType &key, int index, const KeyComparator &keyComparator) -> bool;
+  auto Delete(const KeyType &key, const KeyComparator &keyComparator) -> bool;
+  void Split(Page *bother_page);
+  auto KeyIndex(const KeyType &key, const KeyComparator &keyComparator) -> int;
+  auto Insert(std::pair<KeyType, ValueType> value, int index, const KeyComparator &keyComparator) -> bool;
   auto ValueAt(int index) const -> ValueType;
-  auto GetItem(int index) const -> const MappingType &;
-  auto KeyIndex(const KeyType &key, const KeyComparator &comparator) const -> int;
-  auto Lookup(const KeyType &key, ValueType *value, const KeyComparator &comparator) const -> bool;
-  auto Insert(const KeyType &key, const ValueType &value, const KeyComparator &comparator) -> int;
-  auto MoveHalfTo(BPlusTreeLeafPage *dst_page) -> void;
-  auto MoveAllTo(BPlusTreeLeafPage *dst_page) -> void;
-  auto CopyData(MappingType *items, int size) -> void;
-  auto Remove(const KeyType &key, const KeyComparator &comparator) -> bool;
+  void InsertFirst(const KeyType &key, const ValueType &value);
+  void InsertLast(const KeyType &key, const ValueType &value);
+  auto GetPair(int index) -> MappingType &;
+  void Merge(Page *right_page, BufferPoolManager *buffer_pool_manager_);
 
  private:
   page_id_t next_page_id_;

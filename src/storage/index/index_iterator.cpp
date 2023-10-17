@@ -3,6 +3,7 @@
  */
 #include <cassert>
 
+#include "common/config.h"
 #include "storage/index/index_iterator.h"
 
 namespace bustub {
@@ -12,33 +13,43 @@ namespace bustub {
  * set your own input parameters
  */
 INDEX_TEMPLATE_ARGUMENTS
-INDEXITERATOR_TYPE::IndexIterator(BufferPoolManager *bpm, LeafPage *leaf, int index)
-    : bpm_(bpm), leaf_(leaf), index_(index) {}
+INDEXITERATOR_TYPE::IndexIterator() : page_id_(INVALID_PAGE_ID) {}
 
 INDEX_TEMPLATE_ARGUMENTS
-INDEXITERATOR_TYPE::~IndexIterator() { bpm_->UnpinPage(leaf_->GetPageId(), false); }  // NOLINT
+INDEXITERATOR_TYPE::IndexIterator(Page *curr_page, int index, page_id_t page_id, BufferPoolManager *bufferPoolManager)
+    : page_id_(page_id), curr_page_(curr_page), index_(index), buffer_pool_manager_(bufferPoolManager) {}
+
+INDEX_TEMPLATE_ARGUMENTS
+INDEXITERATOR_TYPE::~IndexIterator() = default;  // NOLINT
 
 INDEX_TEMPLATE_ARGUMENTS
 auto INDEXITERATOR_TYPE::IsEnd() -> bool {
-  return (leaf_->GetNextPageId() == INVALID_PAGE_ID) && (index_ == (leaf_->GetSize() - 1));
+  auto curr_node = reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *>(curr_page_->GetData());
+  return static_cast<bool>(index_ == curr_node->GetSize() && curr_node->GetNextPageId() == INVALID_PAGE_ID);
 }
 
-INDEX_TEMPLATE_ARGUMENTS auto INDEXITERATOR_TYPE::operator*() -> const MappingType & {
-  std::cout << "Get iterator value." << std::endl;
-  return leaf_->GetItem(index_);
+INDEX_TEMPLATE_ARGUMENTS
+auto INDEXITERATOR_TYPE::operator*() -> const MappingType & {
+  auto curr_node = reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *>(curr_page_->GetData());
+  return curr_node->GetPair(index_);
 }
 
 INDEX_TEMPLATE_ARGUMENTS
 auto INDEXITERATOR_TYPE::operator++() -> INDEXITERATOR_TYPE & {
-  std::cout << "Get next operator." << std::endl;
-  if (index_ == (leaf_->GetSize() - 1) && leaf_->GetNextPageId() != INVALID_PAGE_ID) {
-    page_id_t page_id = leaf_->GetNextPageId();
-    bpm_->UnpinPage(leaf_->GetPageId(), false);
-    Page *page = bpm_->FetchPage(page_id);
-    leaf_ = reinterpret_cast<LeafPage *>(page->GetData());
+  index_++;
+  auto curr_node = reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *>(curr_page_->GetData());
+  if (index_ == curr_node->GetSize() && curr_node->GetNextPageId() != INVALID_PAGE_ID) {
+    auto next_page = buffer_pool_manager_->FetchPage(curr_node->GetNextPageId());
+    next_page->RLatch();
+    curr_page_->RUnlatch();
+    buffer_pool_manager_->UnpinPage(curr_node->GetPageId(), false);
+    curr_page_ = next_page;
+    page_id_ = curr_page_->GetPageId();
     index_ = 0;
-  } else {
-    index_++;
+  }
+  if (index_ == curr_node->GetSize() && curr_node->GetNextPageId() == INVALID_PAGE_ID) {
+    curr_page_->RUnlatch();
+    buffer_pool_manager_->UnpinPage(curr_node->GetPageId(), false);
   }
   return *this;
 }
