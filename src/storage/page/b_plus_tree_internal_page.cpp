@@ -110,6 +110,7 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::Merge(const KeyType &key, Page *right_page,
   buffer_pool_manager_->DeletePage(right->GetPageId());
   for (int i = size; i < GetSize(); i++) {
     page_id_t child_page_id = ValueAt(i);
+//    更新所有孩子节点的父页面的指针
     auto child_page = buffer_pool_manager_->FetchPage(child_page_id);
     auto child_node = reinterpret_cast<B_PLUS_TREE_INTERNAL_PAGE_TYPE *>(child_page->GetData());
     child_node->SetParentPageId(GetPageId());
@@ -416,7 +417,7 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::DeleteFirst()
  * 示例：
  * 假设内部页面中的键值对为[(10, A), (20, B), (30, C)]与对应的页面ID [Z, A, B, C]，
  * 调用此函数以删除键20后，键值对将变为[(10, A), (30, C)]，页面ID变为[Z, A, C]，
- * 并且页面的大小也会减少1。s
+ * 并且页面的大小也会减少1。
  */
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::Delete(const KeyType &key, const KeyComparator &keyComparator) -> bool
