@@ -33,7 +33,6 @@ TEST(BPlusTreeTests, InsertTest1) {
   RID rid;
   // create transaction
   auto *transaction = new Transaction(0);
-
   // create and fetch header_page
   page_id_t page_id;
   auto header_page = bpm->NewPage(&page_id);
@@ -56,6 +55,7 @@ TEST(BPlusTreeTests, InsertTest1) {
   ASSERT_EQ(comparator(root_as_leaf->KeyAt(0), index_key), 0);
 
   bpm->UnpinPage(root_page_id, false);
+
   bpm->UnpinPage(HEADER_PAGE_ID, true);
   delete transaction;
   delete disk_manager;
